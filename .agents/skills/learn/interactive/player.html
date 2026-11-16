@@ -418,12 +418,11 @@
       };
       const btnRow = h("div", { class: "row end" }, h("button", { class: "btn primary", text: t("check"), onclick: check }));
       card.append(btnRow);
-      // Enter in a field with an empty field after it moves there; only the first attempt counts,
+      // Enter moves to an empty field while there is one; only the first attempt counts,
       // so it must not grade a half-filled item. The Check button always grades.
       keys = { Enter: () => {
-        const i = fields.indexOf(document.activeElement);
-        const nextEmpty = fields.find((f, k) => k > i && !f.value.trim());
-        if (i >= 0 && nextEmpty) nextEmpty.focus(); else check();
+        const empty = fields.find((f) => !f.value.trim());
+        if (empty) empty.focus(); else check();
       } };
     } else {
       card.append(examNav(it));
