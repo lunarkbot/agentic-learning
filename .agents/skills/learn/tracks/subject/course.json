@@ -1,0 +1,15 @@
+{
+  "options": {
+    "subject": "",
+    "kind": "",
+    "goals": [],
+    "level_scale": "",
+    "target_level": "",
+    "exercise_types": [],
+    "tools": [],
+    "cards": false,
+    "safety_notes": "",
+    "interactive": false,
+    "answer_channel": "files"
+  }
+}

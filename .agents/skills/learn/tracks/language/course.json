@@ -1,0 +1,16 @@
+{
+  "options": {
+    "target_language": "",
+    "target_language_name": "",
+    "source_language": "",
+    "target_level": "B2",
+    "goals": [],
+    "exercise_types": [],
+    "translation_direction": "both",
+    "explanations": "auto",
+    "script": "",
+    "cards": true,
+    "interactive": true,
+    "answer_channel": "files"
+  }
+}

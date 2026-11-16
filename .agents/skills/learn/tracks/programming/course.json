@@ -1,0 +1,17 @@
+{
+  "options": {
+    "technology": "",
+    "target_level": "senior",
+    "goals": [],
+    "include": [],
+    "exclude": [],
+    "stack": "",
+    "package_manager": "",
+    "scope": "",
+    "version": "",
+    "practice_file": "",
+    "run_command": "",
+    "interactive": false,
+    "answer_channel": "files"
+  }
+}

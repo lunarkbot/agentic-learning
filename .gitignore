@@ -1,0 +1,16 @@
+# Private learner workspace: settings, courses, progress. Never part of the public engine.
+/my-learning/
+
+# IDE and OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local agent state (settings stay local, skills are tracked)
+.claude/settings.local.json
+
+# Python
+__pycache__/
+*.pyc
