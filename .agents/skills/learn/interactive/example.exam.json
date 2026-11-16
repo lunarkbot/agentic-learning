@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "title": "Unit test · B1 grammar",
+  "mode": "exam",
+  "lang": "en-US",
+  "shuffle": true,
+  "items": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "topic": "grammar.present-perfect",
+      "prompt": "She ___ in Denver since 2019.",
+      "options": ["lives", "has lived", "lived", "is living"]
+    },
+    {
+      "id": "q2",
+      "type": "gap",
+      "topic": "grammar.conditionals",
+      "text": "If I {{1}} (have) more time, I would take a cooking class.",
+      "gaps": [{ "hint": "verb" }]
+    },
+    {
+      "id": "q3",
+      "type": "order",
+      "topic": "grammar.questions",
+      "prompt": "Make a question.",
+      "tokens": ["How", "long", "have", "you", "worked", "here", "?"]
+    }
+  ]
+}

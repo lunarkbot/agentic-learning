@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Exercises</title>
+<!--
+  Agentic Learning: interactive exercise player. Self-contained, no network access, no dependencies.
+  Do not edit per session. learn_tool.py (`exercises` / `serve`) replaces the placeholder below with
+  {"exercises": <exercises.json>, "ui": <strings>, "meta": {...}}. Format: references/interactive.md.
+-->
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --fg: #1d2330; --muted: #5d6676; --border: #d9dde5;
+    --accent: #2f5bd3; --accent-fg: #ffffff; --ok: #1d7a46; --ok-bg: #e5f5ec; --bad: #b3261e; --bad-bg: #fbe9e7;
+    --chip: #eef1f6; --shadow: 0 1px 3px rgba(20, 30, 50, .08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151b; --card: #1b2029; --fg: #e6e9ef; --muted: #9aa3b2; --border: #2e3542;
+      --accent: #7b9cff; --accent-fg: #0d1220; --ok: #6fd39b; --ok-bg: #173325; --bad: #ff8a80; --bad-bg: #3a1d1b;
+      --chip: #252c38; --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 17px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif; }
+  main { max-width: 680px; margin: 0 auto; padding: 20px 16px 48px; }
+  header { margin-bottom: 16px; }
+  h1 { font-size: 1.25rem; margin: 0 0 8px; }
+  .meta { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: .9rem; }
+  .bar { height: 6px; background: var(--chip); border-radius: 3px; overflow: hidden; margin-top: 8px; }
+  .bar > span { display: block; height: 100%; background: var(--accent); transition: width .2s; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px;
+    box-shadow: var(--shadow); }
+  .prompt { font-size: 1.15rem; margin: 0 0 16px; overflow-wrap: anywhere; }
+  .sub { color: var(--muted); font-size: .95rem; margin: -8px 0 16px; }
+  .options { display: grid; gap: 10px; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  .opt { text-align: left; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px;
+    background: var(--card); display: flex; gap: 10px; align-items: baseline; }
+  .opt:hover:not(:disabled) { border-color: var(--accent); }
+  .opt .k { color: var(--muted); font-size: .85rem; min-width: 1.2em; }
+  .opt.sel { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .opt.ok, .gap.ok { border-color: var(--ok); background: var(--ok-bg); }
+  .opt.bad, .gap.bad { border-color: var(--bad); background: var(--bad-bg); }
+  .opt:disabled { cursor: default; }
+  .text { font-size: 1.15rem; line-height: 2.2; overflow-wrap: anywhere; }
+  .gap { font: inherit; padding: 2px 8px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--bg); color: var(--fg); min-width: 5ch; }
+  .gap:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .fix { color: var(--ok); font-size: .9rem; margin: 0 4px; }
+  .line { min-height: 52px; border: 1px dashed var(--border); border-radius: 10px; padding: 8px;
+    display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .pool { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tok { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--chip); }
+  .tok:disabled { opacity: .35; cursor: default; }
+  .flash { text-align: center; padding: 12px 0; }
+  .flash .front { font-size: 1.6rem; font-weight: 600; margin: 8px 0; overflow-wrap: anywhere; }
+  .flash .back { font-size: 1.35rem; margin: 12px 0 4px; color: var(--accent); overflow-wrap: anywhere; }
+  .flash .ex { color: var(--muted); font-style: italic; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; align-items: center; }
+  .row.end { justify-content: flex-end; }
+  .btn { padding: 10px 18px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); }
+  .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .link { background: none; border: none; color: var(--muted); text-decoration: underline; padding: 4px; }
+  .fb { margin-top: 16px; padding: 12px 14px; border-radius: 10px; }
+  .fb.ok { background: var(--ok-bg); color: var(--ok); }
+  .fb.bad { background: var(--bad-bg); color: var(--bad); }
+  .fb p { margin: 4px 0; color: var(--fg); }
+  .fb strong { color: inherit; }
+  .listen { float: right; margin: -4px 0 8px 12px; padding: 6px 10px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--chip); font-size: .9rem; }
+  .missed { padding-left: 1.2em; }
+  .missed li { margin: 8px 0; }
+  .missed .yours { color: var(--bad); }
+  .missed .right { color: var(--ok); }
+  .hint { color: var(--muted); font-size: .85rem; margin-top: 16px; }
+  .status { font-size: .85rem; }
+  .status.bad { color: var(--bad); }
+  code { font-family: ui-monospace, "Cascadia Code", Consolas, Menlo, monospace; font-size: .92em;
+    background: var(--chip); padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--chip); padding: 12px; border-radius: 8px; overflow-x: auto; font-size: .9rem;
+    line-height: 1.45; text-align: left; margin: 8px 0; }
+  pre code { background: none; padding: 0; }
+  .empty { text-align: center; color: var(--muted); padding: 48px 0; }
+  @media (max-width: 480px) { body { font-size: 16px; } .card { padding: 16px; } }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script id="exercise-data" type="application/json">__EXERCISE_DATA__</script>
+<script>
+(() => {
+  "use strict";
+
+  // ---------- tiny DOM helper
+  const h = (tag, attrs, ...kids) => {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (v === false || v == null) continue;
+      if (k === "class") el.className = v;
+      else if (k === "text") el.textContent = v;
+      else if (k === "html") el.innerHTML = v;
+      else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+      else el.setAttribute(k, v === true ? "" : v);
+    }
+    for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid);
+    return el;
+  };
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  // Minimal safe formatting: ```code blocks```, `inline code`, **bold**, _italic_, line breaks.
+  // Code is never formatted, so `2**3` or `snake_case` inside backticks stays intact.
+  const inline = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/(^|[^\w])_([^_\s](?:[^_]*[^_\s])?)_(?=[^\w]|$)/g, "$1<em>$2</em>").replace(/\n/g, "<br>");
+  const fmt = (s) => String(s == null ? "" : s).split(/(```[\s\S]*?```|`[^`\n]+`)/).map((seg) => {
+    if (seg.startsWith("```") && seg.endsWith("```") && seg.length >= 6) return `<pre><code>${esc(seg.slice(3, -3).replace(/^[^\n]*\n/, ""))}</code></pre>`;
+    if (seg.length > 1 && seg.startsWith("`") && seg.endsWith("`")) return `<code>${esc(seg.slice(1, -1))}</code>`;
+    return inline(seg);
+  }).join("");
+
+  const app = document.getElementById("app");
+  let payload = null;
+  try { payload = JSON.parse(document.getElementById("exercise-data").textContent); } catch (_) { payload = null; }
+  const ui = (payload && payload.ui) || {};
+  const t = (key, vars) => String(ui[key] != null ? ui[key] : key).replace(/\{(\w+)\}/g, (_, k) => (vars && vars[k] != null ? vars[k] : ""));
+  if (!payload || !payload.exercises || !Array.isArray(payload.exercises.items) || !payload.exercises.items.length) {
+    app.append(h("p", { class: "empty", text: t("no_data") }));
+    return;
+  }
+  const ex = payload.exercises;
+  const meta = payload.meta || {};
+  const items = ex.items;
+  const byId = Object.fromEntries(items.map((it) => [it.id, it]));
+  const drill = ex.mode !== "exam";
+  const retryWrong = drill && ex.retry_wrong !== false;
+  if (meta.ui_lang) document.documentElement.lang = meta.ui_lang;
+  document.title = ex.title || t("title_fallback");
+
+  // ---------- helpers
+  const shuffle = (arr) => {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  };
+  const range = (n) => Array.from({ length: n }, (_, i) => i);
+  const norm = (s, cs) => {
+    let v = String(s == null ? "" : s).normalize("NFC").replace(/[‘’ʼ`´]/g, "'").replace(/[“”]/g, '"')
+      .replace(/\s+/g, " ").trim().replace(/\s+([.,!?;:])/g, "$1").replace(/[.!?]+$/, "").trim();
+    return cs ? v : v.toLocaleLowerCase();
+  };
+  const accepts = (list, value, cs) => (list || []).some((a) => norm(a, cs) === norm(value, cs));
+  const nowIso = () => new Date().toISOString();
+
+  // ---------- state (kept in localStorage so a reload or a closed tab loses nothing)
+  const storeKey = `agentic-learning:${meta.course || ""}:${meta.session || ""}:${meta.file || ""}`;
+  const store = {
+    get() { try { return JSON.parse(localStorage.getItem(storeKey) || "null"); } catch (_) { return null; } },
+    set(v) { try { localStorage.setItem(storeKey, JSON.stringify(v)); } catch (_) { /* private mode: fine */ } },
+    clear() { try { localStorage.removeItem(storeKey); } catch (_) { /* ignore */ } },
+  };
+  const fresh = () => {
+    const ids = items.map((it) => it.id);
+    const perm = {};
+    for (const it of items) {
+      if (it.type === "choice") perm[it.id] = ex.shuffle === false ? range(it.options.length) : shuffle(range(it.options.length));
+      if (it.type === "order") {
+        let p = shuffle(range(it.tokens.length));
+        for (let k = 0; k < 5 && it.tokens.length > 1 && p.every((v, i) => v === i); k++) p = shuffle(p);
+        perm[it.id] = p;
+      }
+    }
+    return { v: 1, order: ex.shuffle_items ? shuffle(ids) : ids, perm, pos: 0, phase: "main", retry: [], rpos: 0,
+      results: {}, started: nowIso(), finished: false };
+  };
+  let state = store.get();
+  const sameItems = state && Array.isArray(state.order) && state.order.length === items.length && state.order.every((id) => byId[id]);
+  if (!sameItems) state = fresh();
+
+  // ---------- saving
+  let saveStatus = meta.served ? "" : null;
+  const buildResults = () => {
+    const list = items.map((it) => state.results[it.id] || { id: it.id, type: it.type, topic: it.topic || null, card: it.card || null, response: null, correct: null });
+    const answered = list.filter((r) => r.response != null).length;
+    return {
+      schema: 1, course: meta.course || null, session: meta.session || null, file: meta.file || null,
+      title: ex.title || null, mode: drill ? "drill" : "exam", started: state.started, updated: nowIso(),
+      finished: !!state.finished, total: items.length, answered,
+      correct_first_try: drill ? list.filter((r) => r.correct === true).length : null,
+      items: list,
+    };
+  };
+  const statusEl = h("span", { class: "status", "aria-live": "polite" });
+  const paintStatus = () => {
+    if (saveStatus == null) { statusEl.textContent = ""; return; }
+    statusEl.className = "status" + (saveStatus === "bad" ? " bad" : "");
+    statusEl.textContent = saveStatus === "ok" ? "✓ " + t("saved") : saveStatus === "saving" ? t("saving") : saveStatus === "bad" ? t("not_saved") : "";
+  };
+  const save = () => {
+    store.set(state);
+    if (!meta.served) return;
+    saveStatus = "saving"; paintStatus();
+    fetch("/results", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Session-Token": meta.token || "" },
+      body: JSON.stringify(buildResults()),
+    }).then((r) => { saveStatus = r.ok ? "ok" : "bad"; paintStatus(); })
+      .catch(() => { saveStatus = "bad"; paintStatus(); });
+  };
+
+  // ---------- speech (optional: Web Speech API, works offline with system voices)
+  const canSpeak = !!(ex.lang && window.speechSynthesis && window.SpeechSynthesisUtterance);
+  const speak = (text) => {
+    if (!canSpeak) return;
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = ex.lang;
+    const voices = speechSynthesis.getVoices();
+    const lc = ex.lang.toLowerCase();
+    u.voice = voices.find((v) => v.lang.toLowerCase() === lc) || voices.find((v) => v.lang.toLowerCase().startsWith(lc.split("-")[0])) || null;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  };
+  if (canSpeak) speechSynthesis.getVoices();
+
+  // ---------- keyboard
+  let keys = {};
+  document.addEventListener("keydown", (e) => {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    const typing = e.target && (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA");
+    if (typing && e.key !== "Enter") return;
+    const fn = keys[e.key === " " ? "Space" : e.key];
+    if (fn) { e.preventDefault(); fn(); }
+  });
+
+  // ---------- answers as text (for feedback and the summary)
+  const expectedText = (it) => {
+    if (it.type === "choice") return it.options[it.answer];
+    if (it.type === "gap") return it.gaps.map((g) => (g.accept || [])[0]).join(" · ");
+    if (it.type === "order") return (it.accept || [])[0];
+    if (it.type === "flashcard") return it.back;
+    return "";
+  };
+  const responseText = (it, r) => {
+    if (!r || r.response == null) return "—";
+    if (it.type === "gap") return r.response.map((v) => v || "—").join(" · ");
+    if (it.type === "flashcard") return r.response === "knew" ? t("knew") : t("didnt");
+    return String(r.response);
+  };
+
+  // ---------- flow
+  const current = () => (state.phase === "retry" ? byId[state.retry[state.rpos]] : byId[state.order[state.pos]]);
+  const next = () => {
+    if (state.phase === "main") {
+      state.pos++;
+      if (state.pos >= state.order.length) {
+        state.pos = state.order.length - 1;
+        state.retry = retryWrong ? state.order.filter((id) => state.results[id] && state.results[id].correct === false) : [];
+        if (state.retry.length) { state.phase = "retry"; state.rpos = 0; } else return finish();
+      }
+    } else if (state.phase === "retry") {
+      state.rpos++;
+      if (state.rpos >= state.retry.length) return finish();
+    }
+    store.set(state);
+    render();
+  };
+  const back = () => { if (state.phase === "main" && state.pos > 0) { state.pos--; store.set(state); render(); } };
+  const finish = () => {
+    if (!drill) {
+      const missing = items.filter((it) => !state.results[it.id] || state.results[it.id].response == null).length;
+      if (missing && !confirm(t("confirm_finish"))) return;
+    }
+    state.finished = true; state.phase = "done"; save(); render();
+  };
+  const record = (it, response, correct, startedAt) => {
+    const ms = Math.round(performance.now() - startedAt);
+    if (state.phase === "retry") {
+      state.results[it.id].retry_correct = correct;
+    } else {
+      const prev = state.results[it.id];
+      if (drill && prev && prev.response != null) { save(); return; } // first attempt counts, even after a reload
+      state.results[it.id] = { id: it.id, type: it.type, topic: it.topic || null, card: it.card || null, response,
+        correct: drill ? correct : null, retry_correct: null, ms: (prev && !drill ? prev.ms : 0) + ms };
+    }
+    save();
+  };
+
+  // ---------- rendering
+  const header = () => {
+    const inRetry = state.phase === "retry";
+    const n = inRetry ? state.rpos + 1 : state.pos + 1;
+    const total = inRetry ? state.retry.length : state.order.length;
+    const pct = state.phase === "done" ? 100 : Math.round(((n - 1) / total) * 100);
+    paintStatus();
+    return h("header", null,
+      h("h1", { text: ex.title || t("title_fallback") }),
+      h("div", { class: "meta" },
+        h("span", { text: state.phase === "done" ? t("summary_title") : (inRetry ? t("retry_title") + " · " : "") + t("progress", { n, total }) }),
+        statusEl),
+      h("div", { class: "bar" }, h("span", { style: `width:${pct}%` })));
+  };
+
+  const feedback = (it, ok, onNext) => {
+    const box = h("div", { class: "fb " + (ok ? "ok" : "bad"), role: "status" },
+      h("strong", { text: ok ? "✔ " + t("correct") : "✘ " + t("wrong") }),
+      !ok ? h("p", { html: `${esc(t("correct_answer"))} <strong>${fmt(expectedText(it))}</strong>` }) : null,
+      it.explain ? h("p", { html: fmt(it.explain) }) : null);
+    const nextBtn = h("button", { class: "btn primary", text: t("next"), onclick: onNext });
+    keys = { Enter: onNext };
+    // `say` usually contains the answer (the full correct sentence), so it is offered only now, after answering.
+    const listenBtn = canSpeak && it.say ? h("button", { class: "btn", text: "🔊 " + t("listen"), onclick: () => speak(it.say) }) : null;
+    if (listenBtn) keys.l = () => speak(it.say);
+    setTimeout(() => nextBtn.focus(), 0);
+    return [box, h("div", { class: "row" }, listenBtn, h("span", { style: "flex:1" }), nextBtn)];
+  };
+
+  const examNav = (it) => {
+    const last = state.pos === state.order.length - 1;
+    const row = h("div", { class: "row" },
+      h("button", { class: "btn", text: t("back"), disabled: state.pos === 0, onclick: back }),
+      h("span", { style: "flex:1" }),
+      last ? h("button", { class: "btn primary", text: t("finish"), onclick: finish })
+           : h("button", { class: "btn primary", text: t("next"), onclick: next }));
+    keys.Enter = last ? finish : next;
+    return row;
+  };
+
+  const renderChoice = (it, card, startedAt) => {
+    const perm = state.perm[it.id];
+    const prev = !drill ? state.results[it.id] : null;
+    const buttons = [];
+    const wrap = h("div", { class: "options", role: "group" });
+    const pick = (orig, btn) => {
+      if (drill) {
+        buttons.forEach((b) => (b.disabled = true));
+        const ok = orig === it.answer;
+        btn.classList.add(ok ? "ok" : "bad");
+        buttons.find((b) => Number(b.dataset.orig) === it.answer).classList.add("ok");
+        record(it, it.options[orig], ok, startedAt);
+        card.append(...feedback(it, ok, next));
+      } else {
+        buttons.forEach((b) => b.classList.toggle("sel", b === btn));
+        record(it, it.options[orig], null, startedAt);
+      }
+    };
+    perm.forEach((orig, i) => {
+      const b = h("button", { class: "opt", "data-orig": orig },
+        h("span", { class: "k", text: i < 9 ? String(i + 1) : "" }), h("span", { html: fmt(it.options[orig]) }));
+      if (prev && prev.response === it.options[orig]) b.classList.add("sel");
+      b.addEventListener("click", () => pick(orig, b));
+      buttons.push(b); wrap.append(b);
+      if (i < 9) keys[String(i + 1)] = () => { if (!b.disabled) pick(orig, b); };
+    });
+    card.append(wrap);
+    if (!drill) card.append(examNav(it));
+  };
+
+  const renderGap = (it, card, startedAt) => {
+    const prev = !drill ? state.results[it.id] : null;
+    const fields = [];
+    const text = h("div", { class: "text" });
+    String(it.text).split(/(\{\{\d+\}\})/).forEach((part) => {
+      const m = /^\{\{(\d+)\}\}$/.exec(part);
+      if (!m) { text.append(h("span", { html: fmt(part) })); return; }
+      const g = it.gaps[Number(m[1]) - 1];
+      let f;
+      if (Array.isArray(g.options) && g.options.length) {
+        f = h("select", { class: "gap", "aria-label": t("choose") },
+          h("option", { value: "", text: "— " + t("choose") + " —" }), g.options.map((o) => h("option", { value: o, text: o })));
+      } else {
+        const longest = Math.max(4, ...(g.accept || []).map((a) => a.length), (g.hint || "").length);
+        f = h("input", { class: "gap", type: "text", autocomplete: "off", autocapitalize: "off", spellcheck: "false",
+          lang: ex.lang || null, placeholder: g.hint || t("type_here"), size: Math.min(28, longest + 2) });
+      }
+      f.dataset.gap = m[1];
+      if (prev && Array.isArray(prev.response)) f.value = prev.response[Number(m[1]) - 1] || "";
+      if (!drill) f.addEventListener("input", () => record(it, fields.map((x) => x.value), null, startedAt));
+      fields[Number(m[1]) - 1] = f;
+      text.append(f);
+    });
+    card.append(text);
+    if (drill) {
+      const check = () => {
+        const resp = fields.map((f) => f.value.trim());
+        const okEach = it.gaps.map((g, i) => accepts(g.accept, resp[i], it.case_sensitive));
+        fields.forEach((f, i) => {
+          f.disabled = true; f.classList.add(okEach[i] ? "ok" : "bad");
+          if (!okEach[i]) f.after(h("span", { class: "fix", text: "→ " + it.gaps[i].accept[0] }));
+        });
+        const ok = okEach.every(Boolean);
+        record(it, resp, ok, startedAt);
+        btnRow.remove();
+        card.append(...feedback(it, ok, next));
+      };
+      const btnRow = h("div", { class: "row end" }, h("button", { class: "btn primary", text: t("check"), onclick: check }));
+      card.append(btnRow);
+      keys = { Enter: check };
+    } else {
+      card.append(examNav(it));
+    }
+    setTimeout(() => fields[0] && fields[0].focus(), 0);
+  };
+
+  const renderOrder = (it, card, startedAt) => {
+    const perm = state.perm[it.id];
+    let chosen = []; // indexes into it.tokens
+    const line = h("div", { class: "line", "aria-label": "answer" });
+    const pool = h("div", { class: "pool" });
+    const poolBtns = {};
+    const value = () => chosen.map((i) => it.tokens[i]).join(" ").replace(/\s+([.,!?;:])/g, "$1");
+    const paint = () => {
+      line.replaceChildren(...chosen.map((i, pos) => h("button", { class: "tok", text: it.tokens[i], onclick: () => { chosen.splice(pos, 1); paint(); } })));
+      Object.entries(poolBtns).forEach(([i, b]) => (b.disabled = chosen.includes(Number(i))));
+      if (!drill) {
+        state.drafts = state.drafts || {};
+        state.drafts[it.id] = chosen.slice();
+        record(it, chosen.length ? value() : null, null, startedAt);
+      }
+      if (checkBtn) checkBtn.disabled = chosen.length !== it.tokens.length;
+    };
+    perm.forEach((i) => {
+      const b = h("button", { class: "tok", text: it.tokens[i], onclick: () => { if (!chosen.includes(i)) { chosen.push(i); paint(); } } });
+      poolBtns[i] = b; pool.append(b);
+    });
+    let checkBtn = null;
+    card.append(h("p", { class: "sub", text: t("order_hint") }), line, pool);
+    const draft = !drill && state.drafts && state.drafts[it.id];
+    if (Array.isArray(draft)) chosen = draft.filter((i) => Number.isInteger(i) && i >= 0 && i < it.tokens.length);
+    const clearBtn = h("button", { class: "link", text: t("clear"), onclick: () => { chosen = []; paint(); } });
+    if (drill) {
+      const check = () => {
+        if (chosen.length !== it.tokens.length) return;
+        const resp = value();
+        const ok = accepts(it.accept, resp, it.case_sensitive);
+        [...line.children, ...pool.children].forEach((b) => (b.disabled = true));
+        line.classList.add(ok ? "ok" : "bad");
+        record(it, resp, ok, startedAt);
+        row.remove();
+        card.append(...feedback(it, ok, next));
+      };
+      checkBtn = h("button", { class: "btn primary", text: t("check"), onclick: check, disabled: true });
+      const row = h("div", { class: "row" }, clearBtn, h("span", { style: "flex:1" }), checkBtn);
+      card.append(row);
+      keys = { Enter: check };
+    } else {
+      card.append(h("div", { class: "row" }, clearBtn), examNav(it));
+    }
+    paint();
+  };
+
+  const renderFlash = (it, card, startedAt) => {
+    const box = h("div", { class: "flash" }, h("div", { class: "front", html: fmt(it.front) }));
+    card.append(box);
+    const row = h("div", { class: "row end" });
+    const grade = (knew) => { record(it, knew ? "knew" : "didnt", knew, startedAt); next(); };
+    const reveal = () => {
+      box.append(h("div", { class: "back", html: fmt(it.back) }), it.example ? h("div", { class: "ex", html: fmt(it.example) }) : null);
+      if (canSpeak && it.say) speak(it.say);
+      row.replaceChildren(
+        h("button", { class: "btn", text: "2 · " + t("didnt"), onclick: () => grade(false) }),
+        h("button", { class: "btn primary", text: "1 · " + t("knew"), onclick: () => grade(true) }));
+      keys = { "1": () => grade(true), "2": () => grade(false) };
+    };
+    const revealBtn = h("button", { class: "btn primary", text: t("reveal"), onclick: reveal });
+    row.append(revealBtn);
+    card.append(row);
+    keys = { Space: reveal, Enter: reveal };
+    setTimeout(() => revealBtn.focus(), 0);
+  };
+
+  const renderItem = () => {
+    const it = current();
+    keys = {};
+    const startedAt = performance.now();
+    const card = h("section", { class: "card" });
+    // Before answering only `audio` is playable: a listening prompt written so that it does not give the answer away.
+    if (canSpeak && it.audio) {
+      card.append(h("button", { class: "listen", text: "🔊 " + t("listen"), onclick: () => speak(it.audio) }));
+    }
+    if (it.prompt) card.append(h("p", { class: "prompt", html: fmt(it.prompt) }));
+    ({ choice: renderChoice, gap: renderGap, order: renderOrder, flashcard: renderFlash }[it.type])(it, card, startedAt);
+    return card;
+  };
+
+  const renderSummary = () => {
+    keys = {};
+    const res = buildResults();
+    const card = h("section", { class: "card" });
+    if (drill) {
+      card.append(h("p", { class: "prompt", text: t("score", { correct: res.correct_first_try, total: res.total }) }));
+      const missed = items.filter((it) => state.results[it.id] && state.results[it.id].correct === false);
+      if (missed.length) {
+        card.append(h("p", { class: "sub", text: t("missed") }), h("ul", { class: "missed" }, missed.map((it) => {
+          const r = state.results[it.id];
+          const label = it.type === "flashcard" ? it.front : it.type === "gap" ? it.text.replace(/\{\{\d+\}\}/g, "___") : it.prompt || "";
+          return h("li", null, h("span", { html: fmt(label) }), h("br"),
+            it.type !== "flashcard" ? h("span", { class: "yours", text: "✘ " + responseText(it, r) + "  " }) : null,
+            h("span", { class: "right", html: "✔ " + fmt(expectedText(it)) }));
+        })));
+      }
+    } else {
+      card.append(h("p", { class: "prompt", text: t("answered", { n: res.answered, total: res.total }) }));
+    }
+    if (meta.served) {
+      card.append(h("p", { text: t("done_hint") }));
+    } else {
+      const json = JSON.stringify(res, null, 2);
+      const fileName = String(meta.file || "exercises.json").replace(/^exercises/, "results").replace(/\.json$/, "") + ".json";
+      const copyBtn = h("button", { class: "btn", text: t("copy") });
+      copyBtn.addEventListener("click", () => {
+        const done = () => { copyBtn.textContent = "✓ " + t("copied"); };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(json).then(done, () => fallbackCopy(json, done));
+        else fallbackCopy(json, done);
+      });
+      card.append(h("p", { text: t("static_hint") }), h("div", { class: "row" },
+        h("button", { class: "btn primary", text: t("download"), onclick: () => {
+          const a = h("a", { href: URL.createObjectURL(new Blob([json], { type: "application/json" })), download: fileName });
+          document.body.append(a); a.click(); a.remove();
+        } }), copyBtn));
+    }
+    card.append(h("div", { class: "row end" }, h("button", { class: "link", text: t("start_over"), onclick: startOver })));
+    return card;
+  };
+  const fallbackCopy = (text, done) => {
+    const ta = h("textarea", { style: "position:fixed;left:-9999px" }); ta.value = text;
+    document.body.append(ta); ta.select();
+    try { document.execCommand("copy"); done(); } catch (_) { /* ignore */ }
+    ta.remove();
+  };
+  const startOver = () => {
+    if (!confirm(t("confirm_start_over"))) return;
+    store.clear(); state = fresh(); save(); render();
+  };
+
+  const render = () => {
+    const body = state.phase === "done" ? renderSummary() : renderItem();
+    const hint = state.phase !== "done" ? h("p", { class: "hint", text: t("keys_hint") }) : null;
+    app.replaceChildren(...[header(), body, hint].filter(Boolean));
+  };
+
+  render();
+})();
+</script>
+</body>
+</html>

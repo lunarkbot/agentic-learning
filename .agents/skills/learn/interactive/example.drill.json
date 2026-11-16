@@ -1,0 +1,143 @@
+{
+  "schema": 1,
+  "title": "Prepositions of time · warm-up",
+  "mode": "drill",
+  "lang": "en-US",
+  "shuffle": true,
+  "shuffle_items": false,
+  "retry_wrong": true,
+  "items": [
+    {
+      "id": "p1",
+      "type": "choice",
+      "topic": "grammar.prepositions-time",
+      "prompt": "I was born ___ 1994.",
+      "say": "I was born in 1994.",
+      "options": [
+        "in",
+        "on",
+        "at",
+        "by"
+      ],
+      "answer": 0,
+      "explain": "Years, months and seasons take **in**: _in 1994, in May, in (the) fall_."
+    },
+    {
+      "id": "p2",
+      "type": "gap",
+      "topic": "grammar.prepositions-time",
+      "prompt": "Choose or type the missing words.",
+      "text": "The meeting is {{1}} Monday {{2}} 9 a.m.",
+      "gaps": [
+        {
+          "options": [
+            "in",
+            "on",
+            "at"
+          ],
+          "accept": [
+            "on"
+          ]
+        },
+        {
+          "accept": [
+            "at"
+          ],
+          "hint": "preposition"
+        }
+      ],
+      "explain": "Days take **on**, clock times take **at**."
+    },
+    {
+      "id": "p3",
+      "type": "gap",
+      "topic": "grammar.past-simple",
+      "prompt": "Type the past simple form.",
+      "text": "Yesterday we {{1}} (stop) at a diner and {{2}} (try) the pie.",
+      "gaps": [
+        {
+          "accept": [
+            "stopped"
+          ]
+        },
+        {
+          "accept": [
+            "tried"
+          ]
+        }
+      ],
+      "explain": "Short vowel + consonant doubles: _stop → stopped_; consonant + _y_ → _ied_: _try → tried_."
+    },
+    {
+      "id": "p4",
+      "type": "order",
+      "topic": "grammar.present-perfect",
+      "prompt": "Put the words in order.",
+      "tokens": [
+        "I",
+        "have",
+        "never",
+        "been",
+        "to",
+        "Chicago",
+        "."
+      ],
+      "accept": [
+        "I have never been to Chicago."
+      ],
+      "explain": "Frequency adverbs like **never** go between _have_ and the past participle."
+    },
+    {
+      "id": "l1",
+      "type": "choice",
+      "topic": "listening.times",
+      "audio": "Hi, it's Dana. My flight was delayed, so I land at seven fifteen tonight, not at six.",
+      "prompt": "Listen first. When does Dana land?",
+      "options": [
+        "at 6:00",
+        "at 7:15",
+        "at 7:50",
+        "at 6:15"
+      ],
+      "answer": 1,
+      "explain": "_seven fifteen_ = 7:15. The message mentions six only as the old time."
+    },
+    {
+      "id": "c1",
+      "type": "flashcard",
+      "card": "перенести (встречу)",
+      "front": "перенести (встречу)",
+      "back": "reschedule",
+      "example": "Can we reschedule to Friday?",
+      "say": "reschedule"
+    },
+    {
+      "id": "c2",
+      "type": "choice",
+      "card": "повестка дня",
+      "prompt": "повестка дня",
+      "options": [
+        "agenda",
+        "schedule",
+        "minutes",
+        "deadline"
+      ],
+      "answer": 0,
+      "say": "agenda"
+    },
+    {
+      "id": "x1",
+      "type": "choice",
+      "topic": "core.closures",
+      "prompt": "What does this print?\n```ts\nconst fns: Array<() => number> = [];\nfor (var i = 0; i < 3; i++) fns.push(() => i);\nconsole.log(fns.map((f) => f()));\n```",
+      "options": [
+        "`[0, 1, 2]`",
+        "`[3, 3, 3]`",
+        "`[2, 2, 2]`",
+        "a compile error"
+      ],
+      "answer": 1,
+      "explain": "`var` is function-scoped: all three closures share one `i`, which is 3 after the loop."
+    }
+  ]
+}
