@@ -104,13 +104,13 @@ Follow "Checking a step" in `references/session-files.md` (re-read files from di
 #### review
 1. Topics from `TOOL due` (due `solid` and all `shaky`), plus a few nuance questions from old `solid` topics, plus due cards.
 2. Short recall questions and mini-tasks. When something is forgotten, re-explain briefly in the review, then re-ask in a different form in the next step.
-3. Success on a due `solid` topic: `reviews` +1, `reviewed` = today. Failure: back to `shaky`, `reviews` = 0.
+3. Success on a due `solid` topic: `reviews` +1, `reviewed` = today. Failure: back to `shaky` with `reviews` = 0, `since` = `-`, `reviewed` = `-` (progress rules).
 
 #### test
 1. 10–15 items (15–20 for languages) from `learning` and `solid` topics, favoring due ones. No `todo` topics. Mix formats as the track's `lessons.md` says.
 2. All items in one step, numbered, each with its answer format and an empty answer line. With `options.interactive`, the closed-format items go into an `exam`-mode `exercises.json` (no answers on disk) and the open ones stay in `lesson.md`. Hand over and wait for `done`.
 3. Grade. In the review show the correct answer with a short reason for every wrong one. In chat, list the wrong ones and ask for each whether it was a real gap or a slip. Only confirmed gaps count.
-4. Update statuses after the learner's confirmation: confirmed gaps → `shaky`; correct answers and slips → success on that topic.
+4. Update statuses after the learner's confirmation: confirmed gaps → `shaky` (a `solid` topic is reset as in the progress rules: `reviews` = 0, `since` = `-`, `reviewed` = `-`); correct answers and slips → success on that topic.
 
 #### stat (progress report)
 1. Course without `program.md`/`progress.md`: say it is not started and offer `learn <course>` for the placement test. Do not start it.

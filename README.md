@@ -87,7 +87,7 @@ How it works:
 ## Your data and privacy
 
 - Everything about you lives in one folder, `my-learning/`, inside the repository folder on your computer. It is **ignored by this public repository**, so it is never uploaded here and updating the tutor never touches it.
-- `my-learning/` is its own small git repository: every session is saved as a commit, so nothing gets lost.
+- `my-learning/` is its own small git repository: the progress of every session is saved as a commit. Lesson folders (`sessions/`) stay on your computer only and are not committed.
 - To keep a backup or continue on another computer, write `start` and choose "back up". Use a **private** repository: your files describe what you study and how it goes.
 - Nothing beyond learning progress is stored: no names, emails or other personal data.
 

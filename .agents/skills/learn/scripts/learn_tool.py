@@ -89,7 +89,8 @@ WORKSPACE_README = """\
 Your private learning data: settings, courses, progress, timelines.
 
 - This folder is ignored by the public engine repository, so updating the engine never touches it.
-- It is its own small git repository. Every session ends with a commit here, so nothing is lost.
+- It is its own small git repository. Every session ends with a commit of your progress here.
+  Lesson folders (`<course>/sessions/`) stay on this computer only and are not committed.
 - To back it up or move it to another computer, ask your agent: "back up my progress".
   Use a PRIVATE repository for that: the files describe what you study and how it goes.
 """
@@ -123,7 +124,7 @@ def known_tracks():
 
 def read_json(path: Path):
     try:
-        return json.loads(path.read_text(encoding="utf-8")), None
+        return json.loads(path.read_text(encoding="utf-8-sig")), None
     except FileNotFoundError:
         return None, f"{path.name}: missing"
     except json.JSONDecodeError as e:
@@ -159,7 +160,7 @@ def need_course(data: Path, course: str) -> Path:
 
 def read_program(path: Path):
     """Return list of (line_index, checked, topic_id) and the raw lines."""
-    lines = path.read_text(encoding="utf-8").splitlines()
+    lines = path.read_text(encoding="utf-8-sig").splitlines()
     topics = []
     for i, line in enumerate(lines):
         m = TOPIC_RE.match(line)
@@ -173,7 +174,10 @@ def read_table(lines, start_line, columns, label):
     for n, line in enumerate(lines, start=start_line):
         if not line.startswith("|"):
             continue
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        s = line.strip()[1:]  # one leading pipe; strip("|") would also eat an empty last cell (`... | 0 ||`)
+        if s.endswith("|"):
+            s = s[:-1]
+        cells = [c.strip() for c in s.split("|")]
         if cells and cells[0] in (columns[0], "---", "") or set("".join(cells)) <= set("-: "):
             continue
         if len(cells) != len(columns):
@@ -185,7 +189,7 @@ def read_table(lines, start_line, columns, label):
 
 def read_progress(path: Path):
     """Return (header dict, rows list of dicts, errors list)."""
-    text = path.read_text(encoding="utf-8").splitlines()
+    text = path.read_text(encoding="utf-8-sig").splitlines()
     header = {}
     if not text or text[0].strip() != "---":
         return header, [], ["progress.md: missing '---' header block"]
@@ -207,7 +211,7 @@ def read_progress(path: Path):
 def read_cards(path: Path):
     if not path.exists():
         return [], []
-    return read_table(path.read_text(encoding="utf-8").splitlines(), 1,
+    return read_table(path.read_text(encoding="utf-8-sig").splitlines(), 1,
                       ("front", "back", "example", "box", "next"), "cards.md")
 
 
@@ -585,6 +589,10 @@ def cmd_check(root, data, course, today):
         errors.append("settings.json: 'language' must be a language tag such as en or ru")
     _, prog, header, rows, errs = load_course(data, course)
     if rows is None:
+        present = [n for n in ("program.md", "progress.md") if (cdir / n).exists()]
+        if len(present) == 1:
+            missing = "progress.md" if present[0] == "program.md" else "program.md"
+            errors.append(f"{missing}: missing ({present[0]} exists; the two are created together)")
         if errors:
             print(f"{course}: {len(errors)} problem(s)")
             for e in errors:
@@ -623,6 +631,8 @@ def cmd_check(root, data, course, today):
             errors.append(f"{where}: solid topic needs a 'since' date")
         if r["status"] != "solid" and (r["since"] != "-" or r["reviewed"] != "-"):
             errors.append(f"{where}: since/reviewed must be '-' unless status is solid")
+        if r["status"] != "solid" and r["reviews"].isdigit() and r["reviews"] != "0":
+            errors.append(f"{where}: reviews must be 0 unless status is solid")
         if len(r["note"]) > NOTE_MAX:
             errors.append(f"{where}: note longer than {NOTE_MAX} chars")
     for key in ("course", "level", "sessions", "last_session"):
@@ -659,7 +669,7 @@ def cmd_check(root, data, course, today):
 def read_front_matter(path: Path):
     """Return the simple `key: value` pairs of a Markdown file's front matter."""
     fm = {}
-    lines = path.read_text(encoding="utf-8").splitlines()
+    lines = path.read_text(encoding="utf-8-sig").splitlines()
     if not lines or lines[0].strip() != "---":
         return fm
     for line in lines[1:]:
@@ -837,7 +847,8 @@ def validate_exercises(data):
             errors.append(f"{where}: id must be a non-empty string")
         elif iid in seen:
             errors.append(f"{where}: duplicate id")
-        seen.add(iid)
+        else:
+            seen.add(iid)
         typ = it.get("type")
         if typ not in ITEM_TYPES:
             errors.append(f"{where}: type must be one of {', '.join(ITEM_TYPES)}")
@@ -857,7 +868,7 @@ def validate_exercises(data):
                 errors.append(f"{where}: prompt is required")
             if not _strs(opts, 2) or len(opts) > 9:
                 errors.append(f"{where}: options must be 2-9 non-empty strings")
-            elif len({o.strip().lower() for o in opts}) != len(opts):
+            elif len({o.strip() for o in opts}) != len(opts):  # case counts: sie / Sie
                 errors.append(f"{where}: options must be distinct")
             ans = it.get("answer")
             if mode == "drill" and not (isinstance(ans, int) and not isinstance(ans, bool)
@@ -918,7 +929,9 @@ def build_page(data: Path, cdir: Path, folder: Path, fname: str, token: str, ser
     payload = {"exercises": ex, "ui": ui, "meta": {
         "course": cdir.name, "session": folder.name, "file": fname, "served": served, "token": token,
         "ui_lang": (settings or {}).get("language", "en")}}
-    blob = json.dumps(payload, ensure_ascii=False).replace("</", "<\\/").replace("<!--", "<\\!--")
+    # "<" occurs only inside JSON strings; < keeps the JSON valid and hides </script> and <!--
+    # in the data from the HTML parser.
+    blob = json.dumps(payload, ensure_ascii=False).replace("<", "\\u003c")
     html = tpl.read_text(encoding="utf-8").replace(DATA_PLACEHOLDER, blob, 1)
     return html, ex, []
 
@@ -967,6 +980,7 @@ def cmd_serve(root, data, a, today):
         return 1
     results_path = folder / results_name(fname)
     last_seen = [time.monotonic()]
+    save_lock = threading.Lock()  # handlers run in parallel threads and share the temp file
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):  # keep the console quiet
@@ -1008,9 +1022,10 @@ def cmd_serve(root, data, a, today):
                     raise ValueError("bad shape")
             except (ValueError, UnicodeDecodeError):
                 return self._send(400, b"bad json")
-            tmp = results_path.with_suffix(".tmp")
-            write_json(tmp, body)
-            os.replace(tmp, results_path)
+            with save_lock:
+                tmp = results_path.with_suffix(".tmp")
+                write_json(tmp, body)
+                os.replace(tmp, results_path)
             if body.get("finished"):
                 print(f"results saved: {rel(root, results_path)} "
                       f"(finished, {body.get('answered')}/{body.get('total')} answered)", flush=True)

@@ -144,9 +144,11 @@
     return a;
   };
   const range = (n) => Array.from({ length: n }, (_, i) => i);
+  // No space before closing punctuation, none after opening punctuation (¿Cómo ...?, (sic), «...»).
+  const tidy = (s) => s.replace(/\s+([.,!?;:)\]»])/g, "$1").replace(/([¿¡(\[«])\s+/g, "$1");
   const norm = (s, cs) => {
-    let v = String(s == null ? "" : s).normalize("NFC").replace(/[‘’ʼ`´]/g, "'").replace(/[“”]/g, '"')
-      .replace(/\s+/g, " ").trim().replace(/\s+([.,!?;:])/g, "$1").replace(/[.!?]+$/, "").trim();
+    let v = tidy(String(s == null ? "" : s).normalize("NFC").replace(/[‘’ʼ`´]/g, "'").replace(/[“”]/g, '"')
+      .replace(/\s+/g, " ").trim()).replace(/[.!?]+$/, "").trim();
     return cs ? v : v.toLocaleLowerCase();
   };
   const accepts = (list, value, cs) => (list || []).some((a) => norm(a, cs) === norm(value, cs));
@@ -159,6 +161,14 @@
     set(v) { try { localStorage.setItem(storeKey, JSON.stringify(v)); } catch (_) { /* private mode: fine */ } },
     clear() { try { localStorage.removeItem(storeKey); } catch (_) { /* ignore */ } },
   };
+  // Fingerprint of the exercise content: a state saved for an edited file (same IDs, other options,
+  // types or answers) must not be reused, or old permutations and results would apply to new items.
+  const sig = (() => {
+    const s = JSON.stringify([ex.mode || "drill", items]);
+    let x = 5381;
+    for (let i = 0; i < s.length; i++) x = ((x << 5) + x + s.charCodeAt(i)) | 0;
+    return (x >>> 0).toString(36) + ":" + s.length;
+  })();
   const fresh = () => {
     const ids = items.map((it) => it.id);
     const perm = {};
@@ -170,11 +180,11 @@
         perm[it.id] = p;
       }
     }
-    return { v: 1, order: ex.shuffle_items ? shuffle(ids) : ids, perm, pos: 0, phase: "main", retry: [], rpos: 0,
+    return { v: 1, sig, order: ex.shuffle_items ? shuffle(ids) : ids, perm, pos: 0, phase: "main", retry: [], rpos: 0,
       results: {}, started: nowIso(), finished: false };
   };
   let state = store.get();
-  const sameItems = state && Array.isArray(state.order) && state.order.length === items.length && state.order.every((id) => byId[id]);
+  const sameItems = state && state.sig === sig && Array.isArray(state.order) && state.order.length === items.length && state.order.every((id) => byId[id]);
   if (!sameItems) state = fresh();
 
   // ---------- saving
@@ -196,16 +206,24 @@
     statusEl.className = "status" + (saveStatus === "bad" ? " bad" : "");
     statusEl.textContent = saveStatus === "ok" ? "✓ " + t("saved") : saveStatus === "saving" ? t("saving") : saveStatus === "bad" ? t("not_saved") : "";
   };
-  const save = () => {
-    store.set(state);
-    if (!meta.served) return;
+  // One request at a time: a save requested while another is in flight is sent after it, with the
+  // state as it is then. Parallel requests could finish out of order and leave an older snapshot on disk.
+  let inFlight = false, pending = false;
+  const post = () => {
+    inFlight = true; pending = false;
     saveStatus = "saving"; paintStatus();
     fetch("/results", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Session-Token": meta.token || "" },
       body: JSON.stringify(buildResults()),
     }).then((r) => { saveStatus = r.ok ? "ok" : "bad"; paintStatus(); })
-      .catch(() => { saveStatus = "bad"; paintStatus(); });
+      .catch(() => { saveStatus = "bad"; paintStatus(); })
+      .finally(() => { inFlight = false; if (pending) post(); });
+  };
+  const save = () => {
+    store.set(state);
+    if (!meta.served) return;
+    if (inFlight) pending = true; else post();
   };
 
   // ---------- speech (optional: Web Speech API, works offline with system voices)
@@ -272,8 +290,11 @@
     }
     state.finished = true; state.phase = "done"; save(); render();
   };
-  const record = (it, response, correct, startedAt) => {
-    const ms = Math.round(performance.now() - startedAt);
+  // `clock.at` moves forward on every record, so exam answers changed several times add up real time only.
+  const record = (it, response, correct, clock) => {
+    const now = performance.now();
+    const ms = Math.round(now - clock.at);
+    clock.at = now;
     if (state.phase === "retry") {
       state.results[it.id].retry_correct = correct;
     } else {
@@ -374,7 +395,10 @@
       }
       f.dataset.gap = m[1];
       if (prev && Array.isArray(prev.response)) f.value = prev.response[Number(m[1]) - 1] || "";
-      if (!drill) f.addEventListener("input", () => record(it, fields.map((x) => x.value), null, startedAt));
+      if (!drill) f.addEventListener("input", () => {
+        const vals = fields.map((x) => x.value);
+        record(it, vals.some((v) => v.trim()) ? vals : null, null, startedAt); // all fields cleared = unanswered
+      });
       fields[Number(m[1]) - 1] = f;
       text.append(f);
     });
@@ -394,7 +418,13 @@
       };
       const btnRow = h("div", { class: "row end" }, h("button", { class: "btn primary", text: t("check"), onclick: check }));
       card.append(btnRow);
-      keys = { Enter: check };
+      // Enter in a field with an empty field after it moves there; only the first attempt counts,
+      // so it must not grade a half-filled item. The Check button always grades.
+      keys = { Enter: () => {
+        const i = fields.indexOf(document.activeElement);
+        const nextEmpty = fields.find((f, k) => k > i && !f.value.trim());
+        if (i >= 0 && nextEmpty) nextEmpty.focus(); else check();
+      } };
     } else {
       card.append(examNav(it));
     }
@@ -407,7 +437,7 @@
     const line = h("div", { class: "line", "aria-label": "answer" });
     const pool = h("div", { class: "pool" });
     const poolBtns = {};
-    const value = () => chosen.map((i) => it.tokens[i]).join(" ").replace(/\s+([.,!?;:])/g, "$1");
+    const value = () => tidy(chosen.map((i) => it.tokens[i]).join(" "));
     const paint = () => {
       line.replaceChildren(...chosen.map((i, pos) => h("button", { class: "tok", text: it.tokens[i], onclick: () => { chosen.splice(pos, 1); paint(); } })));
       Object.entries(poolBtns).forEach(([i, b]) => (b.disabled = chosen.includes(Number(i))));
@@ -471,7 +501,7 @@
   const renderItem = () => {
     const it = current();
     keys = {};
-    const startedAt = performance.now();
+    const startedAt = { at: performance.now() };
     const card = h("section", { class: "card" });
     // Before answering only `audio` is playable: a listening prompt written so that it does not give the answer away.
     if (canSpeak && it.audio) {

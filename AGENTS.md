@@ -116,7 +116,7 @@ Two repositories, never mixed:
 
 **Workspace (`my-learning/`).** Always address it with `git -C my-learning ...`.
 - Session start: if it has a remote, `git -C my-learning pull --ff-only`. If that fails, tell the learner; never resolve conflicts silently.
-- Session end: stage only the course folder, `git -C my-learning add -- <course>`, commit as `learn(<course>): <mode> — <short facts>` (e.g. `learn(en-us): test — 3 solid, 2 shaky`), then push if a remote exists. Settings changes: `git -C my-learning add -- settings.json`.
+- Session end: stage only the course folder, `git -C my-learning add -- <course>`, commit as `learn(<course>): <mode> — <short facts>` (e.g. `learn(en-us): test — 3 solid, 2 shaky`), then push if a remote exists. Settings changes: `git -C my-learning add -- settings.json`, plus `ui.json` when it was created or translated (git refuses a path that does not exist, so add it only if it exists).
 - `sessions/` folders are ignored by the workspace's `.gitignore`, so they are never committed.
 - Never use `git add -A`, `git add .`, force push or `--amend`. If push fails or there is no remote, keep the local commit, say so once, and do not retry in a loop.
 - If git has no identity, set a neutral one for the workspace only (`Learner` / `learner@localhost`); never change global git config.

@@ -78,7 +78,7 @@ Free answers are fine ("американский английский" → 2). M
 5. `TOOL check <slug>` must say "course.json ok".
 6. If `options.interactive` is `true` (the default for languages), the conversation language is not English, and `my-learning/ui.json` does not exist yet: create it from `.agents/skills/learn/interactive/ui.en.json` with every value translated into the conversation language (same keys, keep the `{n}`, `{total}`, `{correct}` placeholders). This is done once for all courses.
 7. Commit inside the workspace (see "Git" in `AGENTS.md`), adding `ui.json` if it was created:
-   `git -C my-learning add -- settings.json .gitignore README.md <slug>`
+   `git -C my-learning add -- settings.json .gitignore README.md <slug>` (append `ui.json` when it exists; git refuses a missing path)
    `git -C my-learning commit -m "learn(<slug>): setup — <track>, <one fact>"`
    If git has no identity configured, set one for this repository only: `git -C my-learning config user.name "Learner"` and `git -C my-learning config user.email "learner@localhost"` (never touch the global config, never use real personal data unless the learner gives it).
 
@@ -95,8 +95,8 @@ In at most six short lines, in the conversation language:
 Show the courses from `TOOL status` in one line each, then offer, in the conversation language:
 
 1. **Add a course** → sections 3–5.
-2. **Change a course's settings** (for example turn interactive browser exercises on or off, change the target level, the exercise mix or the flashcards) → read that course's track `setup.md` for the meaning of the option, edit `options` in its `course.json`, run `TOOL check <slug>`, create `ui.json` if interactive was just turned on (section 4, step 6), commit with `learn(<slug>): settings — <what changed>`.
-3. **Change the conversation language** → `TOOL settings --lang <tag> --lang-name "<name>"`, translate `my-learning/ui.json` again if it exists, commit both with message `learn: settings — language <tag>`. Existing files stay in their language; new files use the new one. For language courses, also ask whether `source_language` should change.
+2. **Change a course's settings** (for example turn interactive browser exercises on or off, change the target level, the exercise mix or the flashcards) → read that course's track `setup.md` for the meaning of the option, edit `options` in its `course.json`, run `TOOL check <slug>`, create `ui.json` if interactive was just turned on (section 4, step 6), stage `<slug>` (and `ui.json` if it was created), commit with `learn(<slug>): settings — <what changed>`.
+3. **Change the conversation language** → `TOOL settings --lang <tag> --lang-name "<name>"`, translate `my-learning/ui.json` again if it exists, stage `settings.json` and `ui.json` (if it exists), commit with message `learn: settings — language <tag>`. Existing files stay in their language; new files use the new one. For language courses, also ask whether `source_language` should change.
 4. **Back up or move to another computer** → section 7.
 5. **Update the engine** (new versions of these instructions) → section 8.
 6. **Continue learning** → hand over to the `learn` skill (no course: it shows the overview).
